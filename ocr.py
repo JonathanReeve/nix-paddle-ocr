@@ -3,6 +3,7 @@
 from paddleocr import PaddleOCR
 from PIL import Image
 import os
+import cv2  # Add OpenCV import
 
 def main():
     # Print current working directory and check if test.png exists
@@ -11,29 +12,32 @@ def main():
     
     # Initialize PaddleOCR
     print("Initializing PaddleOCR...")
-    ocr = PaddleOCR(use_angle_cls=True, lang='en')
+    ocr = PaddleOCR(use_textline_orientation=True, lang='en')
     
     # Read the image
     image_path = 'test.png'
     print(f"Reading image: {image_path}")
     
     # Perform OCR
-    result = ocr.ocr(image_path, cls=True)
+    # The 'cls' parameter is deprecated, use predict() directly
+    result = ocr.predict(image_path)
     
     # Print results
     print("\nRecognized Text:")
     print("-" * 50)
     
-    if result:
-        for idx, line in enumerate(result):
-            print(f"Line {idx+1}:")
-            for detection in line:
-                if len(detection) >= 2:
-                    text = detection[1][0]
-                    confidence = detection[1][1]
-                    print(f"  Text: {text}")
-                    print(f"  Confidence: {confidence:.4f}")
-                    print()
+    # Extract and print just the recognized text in a clean format
+    if result and isinstance(result, list) and len(result) > 0:
+        if 'rec_texts' in result[0]:
+            texts = result[0]['rec_texts']
+            scores = result[0]['rec_scores']
+            
+            print("Text detected:")
+            for idx, (text, score) in enumerate(zip(texts, scores)):
+                print(f"Line {idx+1}: {text} (confidence: {score:.4f})")
+        else:
+            print("Text detected, but in an unexpected format:")
+            print(result)
     else:
         print("No text detected in the image.")
     
