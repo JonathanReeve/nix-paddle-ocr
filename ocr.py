@@ -1,35 +1,15 @@
-#!/usr/bin/env python3
-
-# OCR with llama3:vision via Ollama
-
-from ollama import Client
+from paddleocr import PaddleOCR
 from PIL import Image
-import base64
-import io
+import matplotlib.pyplot as plt
 
-# Initialize Ollama client
-client = Client()
+def test_paddle_ocr(image_path="test.png"):
+    ocr = PaddleOCR(use_angle_cls=True, lang='en')
+    result = ocr.ocr(image_path, cls=True)
 
-# Load and encode the image
-def encode_image(image_path):
-    with Image.open(image_path) as img:
-        # Convert to RGB if needed
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
+    for line in result[0]:
+        text = line[1][0]
+        score = line[1][1]
+        print(f"Detected: '{text}' with confidence {score:.2f}")
 
-        buffered = io.BytesIO()
-        img.save(buffered, format="JPEG")  # JPEG is usually more efficient
-        return base64.b64encode(buffered.getvalue()).decode()
-
-image_path = "test.png"  # path to your image file
-image_b64 = encode_image(image_path)
-
-# Send request to Ollama
-response = client.generate(
-    model="llama3:vision",
-    prompt="Please transcribe all the text in this image.",
-    images=[image_b64]
-)
-
-print("Model Response:\n")
-print(response["response"])
+if __name__ == "__main__":
+    test_paddle_ocr()
