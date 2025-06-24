@@ -4,45 +4,49 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
-    python-overlay.url = "github:nix-community/python-overlay";
   };
 
-  outputs = { self, nixpkgs, flake-utils, python-overlay }:
+  outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ python-overlay.overlays.default ];
-        };
-
+        pkgs = import nixpkgs { inherit system; };
         python = pkgs.python313;
-
-        pythonEnv = python.withPackages (ps: with ps; [
-          pip
-          jupyter
-          notebook
-          ipykernel
-          matplotlib
-          numpy
-          pandas
-          opencv4
-          # PaddleOCR is not packaged in nixpkgs; we install it via pip in shellHook
-        ]);
       in {
         devShells.default = pkgs.mkShell {
           buildInputs = [
-            pythonEnv
-            pkgs.git
+            python
+            python.pkgs.pip
+            python.pkgs.setuptools
+            python.pkgs.wheel
+
+            # Jupyter and common deps
+            python.pkgs.jupyter
+            python.pkgs.notebook
+            python.pkgs.matplotlib
+            python.pkgs.numpy
+            python.pkgs.pandas
+
+            # Required native dependencies for PaddleOCR
+            pkgs.glibcLocales
             pkgs.ffmpeg
-            pkgs.tesseract  # optional, for comparison or fallback
+            pkgs.tesseract
+            pkgs.git
+            pkgs.opencv
+
+            # (optional) useful for PIL image debugging
+            pkgs.imagemagick
           ];
 
+          # For UTF-8 compatibility with PaddleOCR
+          LANG = "en_US.UTF-8";
+          LOCALE_ARCHIVE = "${pkgs.glibcLocales}/lib/locale/locale-archive";
+
           shellHook = ''
-            export PYTHONPATH=$PWD
-            echo "Setting up Python environment..."
+            export PYTHONIOENCODING=utf-8
+            echo "Installing PaddleOCR and PaddlePaddle with pip..."
             pip install --upgrade pip
-            pip install paddlepaddle paddleocr
-            echo "You can now run Jupyter or use PaddleOCR from Python."
+            pip install paddleocr paddlepaddle
+            echo "✅ Environment ready. Try running: python test_ocr.py"
           '';
         };
       });
