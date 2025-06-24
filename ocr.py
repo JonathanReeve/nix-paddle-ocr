@@ -26,7 +26,7 @@ image_b64 = encode_image(image_path)
 
 # Send request to Ollama
 response = client.generate(
-    model="llama3:vision",
+    model="llama3.2-vision",
     prompt="Please transcribe all the text in this image.",
     images=[image_b64]
 )
