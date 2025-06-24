@@ -2,8 +2,8 @@
   description = "A dev environment for Spacy-layout";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github.com/nixos/nixpkgs/nixos-unstable";
+    flake-utils.url = "github.com/numtide/flake-utils";
   };
 
   outputs = { self, nixpkgs, flake-utils }: flake-utils.lib.eachDefaultSystem (system:
@@ -21,8 +21,9 @@
         pname = "spacy-layout";
         version = "0.0.12";
         src = pkgs.fetchPypi {
-          inherit pname version;
-          sha256 = "aaaab35db28d8f88ff174c21df21b9afcfb7fb1f0a0c95abf562925d8f34e344";
+          pname = "spacy_layout"; # Corrected: use underscore for PyPI fetch
+          inherit version;
+          sha256 = "5c96e8f6fdc2a059df2c3e02929f03cc5139c03aa1a454d5b82a5831ddeb454d";
         };
         propagatedBuildInputs = with pythonPackages; [
           spacy
