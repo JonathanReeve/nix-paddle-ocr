@@ -22,6 +22,7 @@
         # Create a Python environment with paddleocr
         pythonEnv = python.withPackages (ps: with ps; [
           paddlepaddle
+          paddlex
           paddleocr
           pillow
           numpy
