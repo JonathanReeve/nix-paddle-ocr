@@ -8,9 +8,27 @@
 
   outputs = { self, nixpkgs, flake-utils }: flake-utils.lib.eachDefaultSystem (system:
     let
+      # Create an overlay to skip tests for problematic packages
+      pythonOverlay = final: prev: {
+        python312 = prev.python312.override {
+          packageOverrides = pyFinal: pyPrev: {
+            accelerate = pyPrev.accelerate.overridePythonAttrs (oldAttrs: {
+              # Skip the test phase completely
+              doCheck = false;
+            });
+            
+            plotly = pyPrev.plotly.overridePythonAttrs (oldAttrs: {
+              # Skip the test phase completely
+              doCheck = false;
+            });
+          };
+        };
+      };
+      
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
+        overlays = [ pythonOverlay ];
       };
 
       python = pkgs.python312;
@@ -56,3 +74,4 @@
     }
   );
 }
+
