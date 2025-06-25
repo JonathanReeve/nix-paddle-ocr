@@ -61,6 +61,7 @@
         pillow
         spacy
         spacy-layout
+        pymupdf  # Added PyMuPDF for the fitz module
       ]);
 
     in {

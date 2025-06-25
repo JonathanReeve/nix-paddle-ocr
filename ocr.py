@@ -19,7 +19,7 @@ import fitz  # type: ignore # PyMuPDF (imported as fitz)
 import spacy  # type: ignore
 from spacy.tokens import Doc, Span  # type: ignore
 from spacy.language import Language  # type: ignore
-from spacy_layout import LayoutModel  # type: ignore
+from spacy_layout import spaCyLayout  # type: ignore
 
 
 def extract_text_from_pdf(pdf_path: Union[str, Path]) -> List[Dict[str, Any]]:
@@ -173,20 +173,20 @@ def analyze_document_structure(doc: Doc) -> Dict[str, Any]:
         
         if title_candidates:
             # Sort by font size (descending)
-            title_candidates.sort(key=lambda x: x._.get("size", 0), reverse=True)
+            title_candidates.sort(key=lambda x: x._.size if x._.has("size") else 0, reverse=True)
             structure["title"] = title_candidates[0].text
         
         # Find headings (larger font than surrounding text)
-        all_sizes = [span._.get("size", 0) for span in doc.spans["layout"]]
+        all_sizes = [span._.size if span._.has("size") else 0 for span in doc.spans["layout"]]
         if all_sizes:
             avg_size = sum(all_sizes) / len(all_sizes)
             
             for span in doc.spans["layout"]:
-                size = span._.get("size", 0)
+                size = span._.size if span._.has("size") else 0
                 if size > avg_size * 1.2 and len(span.text) < 100:
                     structure["headings"].append({
                         "text": span.text,
-                        "page": span._.get("page"),
+                        "page": span._.page if span._.has("page") else None,
                         "size": size
                     })
         
@@ -194,8 +194,9 @@ def analyze_document_structure(doc: Doc) -> Dict[str, Any]:
         current_paragraph = ""
         current_page = 1
         
-        for span in sorted(doc.spans["layout"], key=lambda x: (x._.get("page", 1), x._.get("bbox", (0,0,0,0))[1])):
-            page = span._.get("page", 1)
+        for span in sorted(doc.spans["layout"], key=lambda x: ((x._.page if x._.has("page") else 1),
+                                                              (x._.bbox[1] if x._.has("bbox") and x._.bbox else 0))):
+            page = span._.page if span._.has("page") else 1
             
             # If we moved to a new page or there's a significant vertical gap
             if page != current_page:
@@ -242,7 +243,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Process PDF and create Spacy Doc")
     parser.add_argument("pdf_path", help="Path to the PDF file")
     parser.add_argument("--output", "-o", help="Output path for Spacy Doc", default=None)
-    parser.add_argument("--model", "-m", help="Spacy model to use", default="en_core_web_sm")
+    parser.add_argument("--model", "-m", help="Spacy model to use", default="en")
     parser.add_argument("--analyze", "-a", action="store_true", help="Analyze document structure")
     args = parser.parse_args()
     
@@ -253,20 +254,44 @@ def main() -> None:
     
     # Load Spacy model
     print(f"Loading Spacy model: {args.model}")
-    try:
-        nlp = spacy.load(args.model)
-    except OSError:
-        print(f"Model {args.model} not found. Downloading...")
-        spacy.cli.download(args.model)
-        nlp = spacy.load(args.model)
+    if args.model == "en":
+        print("Using blank English model")
+        nlp = spacy.blank("en")
+    else:
+        try:
+            nlp = spacy.load(args.model)
+        except OSError:
+            print(f"Error: Model {args.model} not found.")
+            print("In a Nix environment, please add the model to flake.nix instead of downloading it.")
+            print("Alternatively, use --model en to use a blank English model.")
+            sys.exit(1)
     
-    # Add layout component if available
-    try:
-        layout = LayoutModel()
-        nlp.add_pipe("layout", after="ner")
-        print("Added layout component to pipeline")
-    except Exception as e:
-        print(f"Could not add layout component: {e}")
+    # Set up the necessary extensions for layout information
+    print("Setting up document layout extensions")
+    
+    # Create a custom spans attribute for layout if it doesn't exist
+    if not Doc.has_extension("spans"):
+        Doc.set_extension("spans", default={})
+    
+    # Set up extensions for span attributes
+    if not Span.has_extension("bbox"):
+        Span.set_extension("bbox", default=None)
+    if not Span.has_extension("page"):
+        Span.set_extension("page", default=None)
+    if not Span.has_extension("font"):
+        Span.set_extension("font", default=None)
+    if not Span.has_extension("size"):
+        Span.set_extension("size", default=None)
+    
+    # Initialize the layout spans container for each document
+    @Language.component("init_layout_spans")
+    def init_layout_spans(doc):
+        doc.spans["layout"] = []
+        return doc
+    
+    # Add our custom component
+    nlp.add_pipe("init_layout_spans", first=True)
+    print("Added layout spans initialization to pipeline")
     
     # Extract text from PDF
     text_blocks = extract_text_from_pdf(args.pdf_path)
