@@ -62,6 +62,7 @@
         spacy
         spacy-layout
         pymupdf  # Added PyMuPDF for the fitz module
+        spacy_models.en_core_web_sm # Replace with another model if you want it to be more accurate
       ]);
 
     in {
