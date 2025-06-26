@@ -4,15 +4,25 @@ from paddleocr import PaddleOCR
 from PIL import Image
 import os
 import cv2  # Add OpenCV import
+import paddle  # Import paddle for GPU verification
 
 def main():
+    # Check GPU availability
+    print("\n===== GPU Information =====")
+    print(f"CUDA available: {paddle.is_compiled_with_cuda()}")
+    if paddle.is_compiled_with_cuda():
+        print(f"GPU device count: {paddle.device.cuda.device_count()}")
+        for i in range(paddle.device.cuda.device_count()):
+            print(f"GPU {i} name: {paddle.device.cuda.get_device_name(i)}")
+    print("==========================\n")
+    
     # Print current working directory and check if test.png exists
     print(f"Current working directory: {os.getcwd()}")
     print(f"test.png exists: {os.path.exists('test.png')}")
     
-    # Initialize PaddleOCR
-    print("Initializing PaddleOCR...")
-    ocr = PaddleOCR(use_textline_orientation=True, lang='en')
+    # Initialize PaddleOCR with GPU support
+    print("Initializing PaddleOCR with GPU support...")
+    ocr = PaddleOCR(use_textline_orientation=True, lang='en', use_gpu=True)
     
     # Read the image
     image_path = 'test.png'

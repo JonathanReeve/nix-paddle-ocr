@@ -18,6 +18,11 @@
             (final: prev: {
               python313 = prev.python313.override {
                 packageOverrides = pyFinal: pyPrev: {
+                  # Enable CUDA support for paddlepaddle
+                  paddlepaddle = pyPrev.paddlepaddle.override {
+                    cudaSupport = true;
+                  };
+                  
                   # Create a patched version of paddlex that doesn't check for OCR dependencies
                   paddlex = pyPrev.paddlex.overridePythonAttrs (oldAttrs: {
                     postPatch = ''
@@ -85,12 +90,19 @@
         devShells.default = pkgs.mkShell {
           buildInputs = [
             pythonEnv
+            # Add CUDA dependencies
+            pkgs.cudaPackages.cudatoolkit
+            pkgs.cudaPackages.cudnn
           ];
           
           shellHook = ''
             echo "Python ${python.version} environment with paddleocr activated"
             echo "All dependencies installed via Nix"
+            echo "CUDA-enabled paddlepaddle is available"
             echo "You can run your OCR script with: python ocr.py"
+            
+            # Set environment variables for CUDA
+            export LD_LIBRARY_PATH=${pkgs.cudaPackages.cudatoolkit}/lib:${pkgs.cudaPackages.cudnn}/lib:$LD_LIBRARY_PATH
           '';
         };
       }
